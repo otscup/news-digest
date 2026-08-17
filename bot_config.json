@@ -1,0 +1,13 @@
+{
+  "telegram_token": "",
+  "chat_id": "",
+  "timezone": "Asia/Shanghai",
+  "schedules": ["08:00", "12:00", "20:00"],
+  "per_cat_max": 6,
+  "max_total_items": 36,
+  "cloudflare_max": 1,
+  "translate": true,
+  "send_when_empty": true,
+  "empty_message": "📭 本时段暂无新增资讯。",
+  "show_stats": true
+}

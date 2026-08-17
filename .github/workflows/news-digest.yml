@@ -1,0 +1,43 @@
+name: 全球资讯推送
+
+on:
+  schedule:
+    # 北京时间 08:00 / 12:00 / 20:00  ->  UTC 00:00 / 04:00 / 12:00
+    - cron: "0 0 * * *"
+    - cron: "0 4 * * *"
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}   # 允许在 Actions 页面手动触发测试
+
+permissions:
+  contents: write        # 允许提交 seen.json / last_run.json（保活 + 去重）
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行推送
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT: ${{ secrets.TG_CHAT }}
+        run: python news_bot.py
+
+      - name: 提交去重状态（保活 + 跨运行去重）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "{\"last_run\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > last_run.json
+          git add seen.json last_run.json
+          git diff --cached --quiet || git commit -m "chore: update digest state $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
