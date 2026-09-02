@@ -96,76 +96,71 @@ def _fetch_one(feed):
     return (name, cat, cn, [])
 
 def fetch_all(feeds, seen, collect):
-    """并发抓取所有源，把新条目加入 collect（按分类）。返回总新条目数。"""
+    """并发抓取所有源，把新条目加入 collect（统一放 'general'）。返回总新条目数。"""
     total_new = 0
-    with ThreadPoolExecutor(max_workers=6) as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         futures = {ex.submit(_fetch_one, f): f for f in feeds}
         for fut in as_completed(futures):
             name, cat, cn, entries = fut.result()
             for e in entries:
                 guid = entry_guid(e)
-                if not guid:
-                    continue
-                if guid in seen:
+                if not guid or guid in seen:
                     continue
                 seen[guid] = datetime.datetime.now().isoformat(timespec="seconds")
                 title = clean_text(e.get("title", ""))
                 link = e.get("link", "")
                 summary = clean_text(e.get("summary", ""))
-                if len(summary) > 220:
-                    summary = summary[:220].rstrip() + "…"
+                if len(summary) > 300:
+                    summary = summary[:300].rstrip() + "…"
                 dt = entry_date(e)
                 date_str = dt.strftime("%m-%d") if dt else ""
-                collect.setdefault(cat, []).append({
+                # 封面：从 enclosure / media_content / 正文里提取第一个图
+                image = ""
+                for key in ("enclosures", "media_content"):
+                    arr = e.get(key) or []
+                    if arr:
+                        cand = arr[0].get("href") or arr[0].get("url") or ""
+                        if cand and cand.startswith("http"):
+                            image = cand
+                            break
+                if not image:
+                    m = re.search(r'https?://[^\s\"<>]+\.(?:jpg|jpeg|png|webp)', e.get("summary", "") + " " + e.get("content", [{}])[0].get("value", ""), re.I)
+                    if m:
+                        image = m.group(0)
+                collect.setdefault("general", []).append({
                     "source": name, "cn": cn, "title": title, "link": link,
-                    "summary": summary, "date": date_str, "ts": dt or datetime.datetime.min
+                    "summary": summary, "date": date_str, "ts": dt or datetime.datetime.min,
+                    "image": image
                 })
                 total_new += 1
     return total_new
 
-def build_message(cfg, digest_by_cat, tz, cats=None):
-    if cats is None:
-        cats = {}
-    now = datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M")
-    lines = []
-    lines.append("📰 <b>全球资讯速递</b>")
-    lines.append(f"🕗 {now}（北京时间）")
+def build_message(cfg, item):
+    """为单条热点新闻构建消息体。"""
+    if not item:
+        return "", 0
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    src = html_esc(item.get("cn") or item["source"])
+    title = html_esc(item["title"])
+    date_part = f" · {item['date']}" if item["date"] else ""
+    summary = item.get("summary", "")
+    lines = [
+        "📰 <b>全球热点速递</b>",
+        f"🕗 {now}（北京时间）",
+        "",
+        f"• <b>{title}</b>",
+        f'  <a href="{item["link"]}">来源: {src}{date_part}</a>',
+    ]
+    if summary:
+        lines.append(f"  {html_esc(summary)}")
     lines.append("")
-    cats_local = cats
-    order = ["military", "ai", "cloudflare"]
-    total = 0
-    sources_used = set()
-    cat_counts = {}
-    for cat in order:
-        items = digest_by_cat.get(cat, [])
-        if not items:
-            continue
-        cat_counts[cat] = len(items)
-        lines.append(f"{cats_local.get(cat, cat)}")
-        for it in items:
-            title_html = html_esc(it["title"])
-            src = html_esc(it.get("cn") or it["source"])
-            sources_used.add(it.get("cn") or it["source"])
-            date_part = f" · {it['date']}" if it["date"] else ""
-            lines.append(f"• <b>{title_html}</b>")
-            link = it["link"]
-            if link:
-                lines.append(f'  <a href="{link}">来源: {src}{date_part}</a>')
-            else:
-                lines.append(f"  来源: {src}{date_part}")
-            if it["summary"]:
-                lines.append(f"  {html_esc(it['summary'])}")
-        lines.append("")
-        total += len(items)
-    # 统计脚注
-    if cfg.get("show_stats", True) and total > 0:
+    if cfg.get("show_stats", True):
         lines.append("—" * 12)
-        cc = " / ".join(f"{cats_local.get(c, c)} {cat_counts[c]}" for c in order if cat_counts.get(c))
-        lines.append(f"📊 本期共 <b>{total}</b> 条（{cc}）· 来源 {len(sources_used)} 个")
+        lines.append("📊 1 条热点 · 随机推送")
     msg = "\n".join(lines).strip()
-    return msg, total
+    return msg, 1
 
-def send_telegram(cfg, text):
+def send_telegram(cfg, text, image=None):
     token = cfg.get("telegram_token", "")
     chat_id = cfg.get("chat_id", "")
     if not token or not chat_id:
@@ -174,14 +169,25 @@ def send_telegram(cfg, text):
         print(text)
         print("─" * 40)
         return True
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
     try:
+        if image:
+            # 带封面：sendPhoto + caption
+            url = f"https://api.telegram.org/bot{token}/sendPhoto"
+            payload = {
+                "chat_id": chat_id,
+                "photo": image,
+                "caption": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
+        else:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            payload = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
         r = requests.post(url, json=payload, timeout=30)
         data = r.json()
         if data.get("ok"):
@@ -189,6 +195,10 @@ def send_telegram(cfg, text):
             return True
         else:
             log(f"[FAIL] Telegram 返回错误: {data}")
+            # 带图失败时回退到纯文本
+            if image and "photo" in (data.get("description") or "").lower():
+                log("[WARN] sendPhoto 失败，回退 sendMessage")
+                return send_telegram(cfg, text, image=None)
             return False
     except Exception as ex:
         log(f"[FAIL] 推送异常: {ex}")
@@ -270,16 +280,11 @@ def main():
     for c in collect:
         collect[c].sort(key=lambda x: x["ts"], reverse=True)
 
-    # Cloudflare 每天只保留最热的 1 条（按 feed 顺序/时间取首条）
-    cf_max = cfg.get("cloudflare_max", 1)
-    if "cloudflare" in collect:
-        collect["cloudflare"] = collect["cloudflare"][:cf_max]
-
-    send_when_empty = cfg.get("send_when_empty", True)
-    has_content = any(collect.values())
-    if not has_content:
+    # 随机选 1 条热点（偏好有封面的）
+    all_items = collect.get("general", [])
+    if not all_items:
         if send_when_empty:
-            msg, _ = build_message(cfg, {}, tz, cats)
+            msg, _ = build_message(cfg, {})
             msg += "\n\n" + html_esc(cfg.get("empty_message", "📭 本时段暂无新增资讯。"))
             send_telegram(cfg, msg) if not args.dry_run else (log("[DRY-RUN] empty"), print(msg))
         else:
@@ -287,30 +292,27 @@ def main():
         save_seen(prune_seen(seen))
         return
 
-    # 字符预算分配：每类取等量头条，总量受 3900 字符约束
-    per_cat = cfg.get("per_cat_max", 8)
-    order = [c for c in ["military", "ai", "cloudflare"] if collect.get(c)]
-    # 先按 per_cat 截断每类
-    for c in collect:
-        collect[c] = collect[c][:per_cat]
-    # 若仍超长，逐步降低每类条数直到合规（最少每类1条）
-    while True:
-        msg, _ = build_message(cfg, collect, tz, cats)
-        if len(msg) <= 3900:
-            break
-        # 找当前最长的类减1
-        longest = max(order, key=lambda c: len(collect[c]))
-        if len(collect[longest]) <= 1:
-            break
-        collect[longest] = collect[longest][:-1]
+    # 优先有封面的，次随机
+    with_img = [it for it in all_items if it.get("image")]
+    pool = with_img if with_img else all_items
+    pick = pool[int(time.time()) % len(pool)]
 
-    msg, total = build_message(cfg, collect, tz, cats)
-    if len(msg) > 4000:
-        msg = msg[:3900].rstrip() + "\n…(已截断)"
+    # 翻译：只翻选中的 1 条
+    trans_enabled = cfg.get("translate", True)
+    if trans_enabled:
+        log(f"翻译热点条目（标题/摘要 -> 中文）…")
+        from translate import translate_batch
+        zt = translate_batch([pick["title"]]) or [pick["title"]]
+        zs = translate_batch([pick.get("summary", "")]) or [pick.get("summary", "")]
+        pick["title"] = zt[0] or pick["title"]
+        if zs[0]:
+            pick["summary"] = zs[0][:300]
+
+    msg, total = build_message(cfg, pick)
     if args.dry_run:
-        send_telegram(cfg, msg)  # dry-run 内部会打印不推送（若 token 缺失）
+        send_telegram(cfg, msg, image=pick.get("image"))
     else:
-        send_telegram(cfg, msg)
+        send_telegram(cfg, msg, image=pick.get("image"))
     save_seen(prune_seen(seen))
 
 if __name__ == "__main__":

@@ -1,12 +1,10 @@
-name: 全球资讯推送
+name: 全球热点推送
 
 on:
   schedule:
-    # 北京时间 08:00 / 12:00 / 20:00  ->  UTC 00:00 / 04:00 / 12:00
-    - cron: "0 0 * * *"
-    - cron: "0 4 * * *"
-    - cron: "0 12 * * *"
-  workflow_dispatch: {}   # 允许在 Actions 页面手动触发测试
+    # 北京时间每小时 0 分 -> UTC 每小时 0 分
+    - cron: "0 * * * *"
+  workflow_dispatch: {}   # 允许手动触发测试
 
 permissions:
   contents: write        # 允许提交 seen.json / last_run.json（保活 + 去重）

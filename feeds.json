@@ -1,24 +1,22 @@
 {
   "categories": {
-    "military": "🛡️ 全球军事",
-    "ai": "🤖 AI 前沿",
-    "cloudflare": "☁️ Cloudflare 教程 / 动态"
+    "general": "🌐 全球热点"
   },
   "feeds": [
-    { "name": "Defense News",        "cat": "military",    "url": "https://www.defensenews.com/arc/outboundfeeds/rss/", "max": 6, "cn": "美国防务新闻" },
-    { "name": "The War Zone (TWZ)",  "cat": "military",    "url": "https://www.twz.com/rss",                             "max": 6, "cn": "战区 TWZ" },
-    { "name": "Defence Blog",        "cat": "military",    "url": "https://defence-blog.com/feed/",                      "max": 5, "cn": "防务博客" },
-    { "name": "Army Technology",     "cat": "military",    "url": "https://www.army-technology.com/feed/",               "max": 5, "cn": "陆军技术" },
-    { "name": "The Verge AI",        "cat": "ai",          "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "max": 5, "cn": "The Verge" },
-    { "name": "Ars Technica AI",     "cat": "ai",          "url": "https://arstechnica.com/ai/feed/",                    "max": 5, "cn": "Ars Technica" },
-    { "name": "OpenAI Blog",         "cat": "ai",          "url": "https://openai.com/blog/rss.xml",                     "max": 4, "cn": "OpenAI" },
-    { "name": "Import AI",           "cat": "ai",          "url": "https://importai.substack.com/feed",                  "max": 3, "cn": "Import AI" },
-    { "name": "MIT Tech Review AI", "cat": "ai",          "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed", "max": 4, "cn": "MIT科技评论" },
-    { "name": "Wired AI",            "cat": "ai",          "url": "https://www.wired.com/feed/tag/ai/latest/rss",        "max": 4, "cn": "连线 Wired" },
-    { "name": "量子位 (QbitAI)",      "cat": "ai",          "url": "https://www.qbitai.com/feed",                         "max": 5, "cn": "量子位" },
-    { "name": "极客公园 (GeekPark)",  "cat": "ai",          "url": "https://www.geekpark.net/rss",                        "max": 5, "cn": "极客公园" },
-    { "name": "InfoQ 中文",          "cat": "ai",          "url": "https://www.infoq.cn/feed",                            "max": 5, "cn": "InfoQ" },
-    { "name": "IT之家",             "cat": "ai",          "url": "https://www.ithome.com/rss/",                          "max": 5, "cn": "IT之家" },
-    { "name": "Cloudflare Blog",     "cat": "cloudflare",  "url": "https://blog.cloudflare.com/rss/",                    "max": 8, "cn": "Cloudflare" }
+    { "name": "The Verge",            "cat": "general", "url": "https://www.theverge.com/rss/index.xml",               "max": 8, "cn": "The Verge" },
+    { "name": "Ars Technica",         "cat": "general", "url": "https://feeds.arstechnica.com/arstechnica/index",     "max": 8, "cn": "Ars Technica" },
+    { "name": "Wired",                "cat": "general", "url": "https://www.wired.com/feed/rss",                       "max": 8, "cn": "Wired" },
+    { "name": "TechCrunch",           "cat": "general", "url": "https://techcrunch.com/feed/",                        "max": 8, "cn": "TechCrunch" },
+    { "name": "Hacker News",          "cat": "general", "url": "https://hnrss.org/frontpage",                         "max": 10, "cn": "Hacker News" },
+    { "name": "BBC 中文",             "cat": "general", "url": "https://feeds.bbci.co.uk/zhongwen/simp/rss.xml",     "max": 8, "cn": "BBC 中文" },
+    { "name": "36氪",                 "cat": "general", "url": "https://36kr.com/feed",                               "max": 8, "cn": "36氪" },
+    { "name": "虎嗅",                 "cat": "general", "url": "https://www.huxiu.com/rss/0.xml",                     "max": 8, "cn": "虎嗅" },
+    { "name": "量子位 (QbitAI)",       "cat": "general", "url": "https://www.qbitai.com/feed",                        "max": 6, "cn": "量子位" },
+    { "name": "极客公园 (GeekPark)",   "cat": "general", "url": "https://www.geekpark.net/rss",                       "max": 6, "cn": "极客公园" },
+    { "name": "IT之家",              "cat": "general", "url": "https://www.ithome.com/rss/",                         "max": 6, "cn": "IT之家" },
+    { "name": "InfoQ 中文",          "cat": "general", "url": "https://www.infoq.cn/feed",                           "max": 6, "cn": "InfoQ" },
+    { "name": "OpenAI Blog",         "cat": "general", "url": "https://openai.com/blog/rss.xml",                     "max": 5, "cn": "OpenAI" },
+    { "name": "MIT Tech Review",     "cat": "general", "url": "https://www.technologyreview.com/feed/",             "max": 6, "cn": "MIT 科技评论" },
+    { "name": "Cloudflare Blog",     "cat": "general", "url": "https://blog.cloudflare.com/rss/",                   "max": 5, "cn": "Cloudflare" }
   ]
 }
