@@ -15,7 +15,8 @@ import feedparser, requests
 BASE = os.path.dirname(os.path.abspath(__file__))
 FEEDS_FILE = os.path.join(BASE, "feeds.json")
 CFG_FILE   = os.path.join(BASE, "bot_config.json")
-SEEN_FILE  = os.path.join(BASE, "seen.json")
+SEEN_FILE = os.path.join(BASE, "seen.json")
+LAST_RUN_FILE = os.path.join(BASE, "last_run.json")
 STATE_DIR  = BASE
 UA = "Mozilla/5.0 (compatible; NewsDigestBot/1.0)"
 
@@ -246,6 +247,20 @@ def main():
         tz = ZoneInfo(cfg.get("timezone", "Asia/Shanghai"))
     except Exception:
         pass
+
+    # 防抖：距上次推送不足 55 分钟则跳过（避免 keepalive 在不足 1 小时内反复触发）
+    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if os.path.exists(LAST_RUN_FILE) and not args.dry_run:
+        try:
+            last = json.load(open(LAST_RUN_FILE, encoding="utf-8")).get("last_run", "")
+            if last:
+                last_ts = datetime.datetime.strptime(last, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+                delta_min = (datetime.datetime.now(datetime.timezone.utc) - last_ts).total_seconds() / 60
+                if delta_min < 55:
+                    log(f"距上次推送仅 {delta_min:.1f} 分钟（< 55 分钟），跳过本次。")
+                    return
+        except Exception:
+            pass
 
     seen = load_seen()
     collect = {}
