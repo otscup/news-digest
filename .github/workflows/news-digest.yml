@@ -2,8 +2,8 @@ name: 全球热点推送
 
 on:
   schedule:
-    # 北京时间每小时 0 分 -> UTC 每小时 0 分
-    - cron: "0 * * * *"
+    # 每 10 分钟检查一次（GitHub 对 */10 比 0 * * * * 更少节流）
+    - cron: "*/10 * * * *"
   workflow_dispatch: {}   # 允许手动触发测试
 
 permissions:
