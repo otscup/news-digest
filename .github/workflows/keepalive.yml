@@ -1,0 +1,64 @@
+name: keepalive（确保每小时至少 1 次）
+
+on:
+  schedule:
+    # 每 5 分钟检查一次，若主 workflow 超过 70 分钟未运行则补触发
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: 检出仓库（浅克隆）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 检查 last_run 时间
+        id: check
+        run: |
+          set -e
+          if [ ! -f last_run.json ]; then
+            echo "no_last_run=true" >> $GITHUB_OUTPUT
+            echo "last_run_iso=never" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          LAST=$(python -c "import json; print(json.load(open('last_run.json')).get('last_run',''))")
+          echo "last_run_iso=$LAST" >> $GITHUB_OUTPUT
+          if [ -z "$LAST" ]; then
+            echo "no_last_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          # 计算距上次运行的秒数
+          NOW=$(date -u +%s)
+          LAST_TS=$(date -u -d "$LAST" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST" +%s 2>/dev/null || echo 0)
+          DELTA=$((NOW - LAST_TS))
+          echo "delta_seconds=$DELTA" >> $GITHUB_OUTPUT
+          if [ "$DELTA" -gt 4200 ]; then
+            echo "need_dispatch=true" >> $GITHUB_OUTPUT
+          else
+            echo "need_dispatch=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 补触发主 workflow
+        if: steps.check.outputs.need_dispatch == 'true'
+        env:
+          GH_PAT: ${{ secrets.KEEPALIVE_PAT }}
+        run: |
+          echo "上次运行: ${{ steps.check.outputs.last_run_iso }}，超过 70 分钟，补触发 news-digest workflow"
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/otscup/news-digest/actions/workflows/news-digest.yml/dispatches \
+            -d '{"ref":"main"}' > /dev/null
+          echo "dispatch sent"
+
+      - name: 无需触发
+        if: steps.check.outputs.need_dispatch != 'true'
+        run: |
+          echo "上次运行: ${{ steps.check.outputs.last_run_iso }}，70 分钟内，跳过"
