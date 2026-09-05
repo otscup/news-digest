@@ -307,9 +307,9 @@ def main():
         save_seen(prune_seen(seen))
         return
 
-    # 优先有封面的，次随机
-    with_img = [it for it in all_items if it.get("image")]
-    pool = with_img if with_img else all_items
+    # 优先中文源，次选英文源，避免整晚都是翻译后的英语媒体内容
+    cn_items = [it for it in all_items if any('\u4e00' <= c <= '\u9fff' for c in (it.get("title") or ""))]
+    pool = cn_items if cn_items else all_items
     pick = pool[int(time.time()) % len(pool)]
 
     # 翻译：只翻选中的 1 条
